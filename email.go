@@ -51,6 +51,9 @@ type Email struct {
 	Headers     textproto.MIMEHeader
 	Attachments []*Attachment
 	ReadReceipt []string
+	// CHANGE: New field "Draft". If Draft is true, sets header "X-Unset: 1"
+	// and disables From, Date, Message-Id headers
+	Draft bool
 }
 
 // part is a copyable representation of a multipart.Part
@@ -298,6 +301,7 @@ func (e *Email) AttachFile(filename string) (a *Attachment, err error) {
 //
 // "e"'s fields To, Cc, From, Subject will be used unless they are present in
 // e.Headers. Unless set in e.Headers, "Date" will filled with the current time.
+// CHANGE: Writes header "X-Unset: 1" if receiver is Draft Email
 func (e *Email) msgHeaders() (textproto.MIMEHeader, error) {
 	res := make(textproto.MIMEHeader, len(e.Headers)+6)
 	if e.Headers != nil {
@@ -320,7 +324,7 @@ func (e *Email) msgHeaders() (textproto.MIMEHeader, error) {
 	if _, ok := res["Subject"]; !ok && e.Subject != "" {
 		res.Set("Subject", e.Subject)
 	}
-	if _, ok := res["Message-Id"]; !ok {
+	if _, ok := res["Message-Id"]; !ok && !e.Draft {
 		id, err := generateMessageID()
 		if err != nil {
 			return nil, err
@@ -328,14 +332,17 @@ func (e *Email) msgHeaders() (textproto.MIMEHeader, error) {
 		res.Set("Message-Id", id)
 	}
 	// Date and From are required headers.
-	if _, ok := res["From"]; !ok {
+	if _, ok := res["From"]; !ok && !e.Draft {
 		res.Set("From", e.From)
 	}
-	if _, ok := res["Date"]; !ok {
+	if _, ok := res["Date"]; !ok && !e.Draft {
 		res.Set("Date", time.Now().Format(time.RFC1123Z))
 	}
 	if _, ok := res["MIME-Version"]; !ok {
 		res.Set("MIME-Version", "1.0")
+	}
+	if _, ok := res["X-Unset"]; !ok && e.Draft == true {
+		res.Set("X-Unset", "1")
 	}
 	for field, vals := range e.Headers {
 		if _, ok := res[field]; !ok {
