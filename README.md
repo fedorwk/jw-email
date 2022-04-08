@@ -3,6 +3,7 @@
 Email struct now contains the boolean field Draft.
 If Draft is set to true, the headers From, Date, Message-Id are not written in the MIME headers of the message. The header "X-Unset: 1" is also written, which informs the email clients that the message is a draft (if this header is supported by the client). 
 
+### Original README:
 email
 =====
 Robust and flexible email library for Go
